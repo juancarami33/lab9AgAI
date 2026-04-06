@@ -1,0 +1,12 @@
+# TTC Real-Time Departure Data
+# Format: RouteNumber|RouteName|EastboundTerminus|WestboundTerminus
+501|Queen|Neville Park Loop|Long Branch Loop
+504|King|Distillery District|Dundas West Stn
+509|Harbourfront|Union Station|Exhibition Loop
+510|Spadina|Spadina Station|Union Station
+511|Bathurst|Bathurst Station|Fleet Loop
+512|St Clair|Yonge & St Clair|Weston Road
+514|Cherry|Distillery Loop|Exhibition Place
+505|Dundas|Dundas Station|Kipling Station
+506|Carlton|Main Street|High Park Loop
+508|Lake Shore|Long Branch Loop|Humber Loop
