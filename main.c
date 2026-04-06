@@ -5,10 +5,10 @@
  * Reads routes from routes.txt and shows a live-updating board with:
  *   - Countdown to next vehicle arrival
  *   - Service alerts (random Delayed / Stalled statuses)
- *   - Eastbound / Westbound direction toggle
+ * - Eastbound / Westbound direction toggle (T key, persisted)
  *
  * Controls:
- *   D   Toggle Eastbound / Westbound
+ * T   Toggle Eastbound / Westbound
  *   Q   Quit
  */
 
@@ -48,7 +48,8 @@
 #define MAX_ROUTES   30
 #define NAME_LEN     48
 #define BOARD_W      78      /* board width in characters                 */
-#define ALERT_PCT    10      /* % chance a new arrival triggers an alert  */
+#define ALERT_PCT    15      /* % chance a new arrival triggers an alert  */
+#define STATE_FILE   ".board_state"  /* persisted direction toggle          */
 #define STALL_PCT     3      /* % chance (within ALERT_PCT) of stall      */
 #define MIN_INTV      4      /* minimum service interval in minutes        */
 #define MAX_INTV     15      /* maximum service interval in minutes        */
@@ -145,6 +146,31 @@ static ServiceStatus random_status(int *delay_out)
 /* ═══════════════════════════════════════════════
  * Load Routes from File
  * ═══════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════
+ * Persistence  (saves direction toggle across restarts)
+ * ═══════════════════════════════════════════════ */
+static void save_state(void)
+{
+    FILE *fp = fopen(STATE_FILE, "w");
+    if (fp) {
+        fprintf(fp, "%d\n", show_eb);
+        fclose(fp);
+    }
+}
+
+static void load_state(void)
+{
+    FILE *fp = fopen(STATE_FILE, "r");
+    if (fp) {
+        int val;
+        if (fscanf(fp, "%d", &val) == 1)
+            show_eb = (val != 0) ? 1 : 0;
+        fclose(fp);
+    }
+    /* File absent on first run — default Eastbound stays */
+}
+
+
 static void load_routes(const char *path)
 {
     FILE *fp = fopen(path, "r");
@@ -255,7 +281,7 @@ static void draw_board(void)
     /* ── Direction / Clock Bar ───────────────────────────────────── */
     fputs(DARK_BG WHITE_FG, stdout);
     char dir_bar[64];
-    snprintf(dir_bar, sizeof dir_bar, "  Direction: %s  [D] Toggle",
+    snprintf(dir_bar, sizeof dir_bar, "  Direction: %s  [T] Toggle",
              show_eb ? "EASTBOUND  >>>" : "<<<  WESTBOUND");
     printf("%-*s  Clock: %s  \n" RESET, BOARD_W - 12, dir_bar, ts);
 
@@ -321,7 +347,7 @@ static void draw_board(void)
     fputs(GRAY_FG, stdout);
     hline('-');
     fputs(RESET, stdout);
-    fputs(GRAY_FG "  [D] Toggle Direction   [Q] Quit"
+    fputs(GRAY_FG "  [T] Toggle Direction   [Q] Quit"
           "   Auto-refreshes every second\n" RESET, stdout);
     fputs(RED_BG WHITE_FG "  ", stdout);
     padprint("ttc.ca  |  @TTCnotices  |  Call 511 for service information",
@@ -344,6 +370,7 @@ int main(void)
     signal(SIGTERM, handle_signal);
 
     load_routes("routes.txt");
+    load_state();            /* restore direction from last session */
     if (num_routes == 0) {
         fprintf(stderr, "No routes loaded from routes.txt\n");
         return EXIT_FAILURE;
@@ -367,8 +394,9 @@ int main(void)
             int ch = read_key();
             if (ch == 'q' || ch == 'Q') {
                 running = 0;
-            } else if (ch == 'd' || ch == 'D') {
+            } else if (ch == 't' || ch == 'T') {
                 show_eb = !show_eb;
+                save_state();    /* persist the new direction */
                 update();
                 draw_board();   /* immediate redraw on direction toggle */
             }
@@ -377,6 +405,7 @@ int main(void)
     }
 
     restore_terminal();
+    save_state();        /* persist direction on clean exit */
     puts("Thank you for riding the TTC!");
     return EXIT_SUCCESS;
 }
